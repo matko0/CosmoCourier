@@ -6,6 +6,12 @@ TagManager:
   tags:
   - LadderTop
   - Ladder
+  - OxygenTank
+  - OxygenGenerator
+  - Hole
+  - Cannon
+  - BulletBox
+  - Electricity
   layers:
   - Default
   - TransparentFX
@@ -15,8 +21,8 @@ TagManager:
   - UI
   - Ladder
   - Ground
-  - 
-  - 
+  - Player
+  - Interactable
   - 
   - 
   - 
