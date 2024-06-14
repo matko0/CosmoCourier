@@ -12,6 +12,8 @@ TagManager:
   - Cannon
   - BulletBox
   - Electricity
+  - FuelTank
+  - Engine
   layers:
   - Default
   - TransparentFX

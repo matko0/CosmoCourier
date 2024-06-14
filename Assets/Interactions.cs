@@ -10,12 +10,16 @@ public class PlayerInteraction : MonoBehaviour
     public float generatorInteractDistance = 2f; // Distance to interact with oxygen generators
     public float bulletBoxInteractDistance = 2f; // Distance to interact with bullet box
     public float cannonInteractDistance = 2f; // Distance to interact with cannon
+    public float fuelTankInteractDistance = 2f; // Distance to interact with fuel tanks or containers
+    public float electricityInteractDistance = 2f; // Distance to interact with electricity objects
     public Slider progressBar; // Reference to the player's action progress bar
     public float interactionTime = 2f; // Time to hold E for interaction
     public Transform headPosition; // Reference to the player's head position
     private Coroutine currentInteraction;
     private bool holdingTank; // Flag to indicate if the player is holding an oxygen tank
     private bool holdingBullet; // Flag to indicate if the player is holding a bullet
+    private bool holdingFuel; // Flag to indicate if the player is holding fuel
+    private bool nearEngine; // Flag to indicate if the player is near an engine
 
     void Start()
     {
@@ -74,29 +78,20 @@ public class PlayerInteraction : MonoBehaviour
             }
         }
 
-        // Check for interaction with bullet box
+        // Check for interaction with fuel tank or container
         if (Input.GetKeyDown(KeyCode.E))
         {
-            Collider2D[] bulletBoxColliders = Physics2D.OverlapCircleAll(transform.position, bulletBoxInteractDistance);
-            foreach (Collider2D collider in bulletBoxColliders)
+            Collider2D[] fuelTankColliders = Physics2D.OverlapCircleAll(transform.position, fuelTankInteractDistance);
+            foreach (Collider2D collider in fuelTankColliders)
             {
-                if (collider.CompareTag("BulletBox") && !holdingBullet)
+                if (collider.CompareTag("FuelTank") && !holdingFuel)
                 {
-                    currentInteraction = StartCoroutine(TakeBullet(collider));
+                    currentInteraction = StartCoroutine(TakeFuel(collider));
                     break;
                 }
-            }
-        }
-
-        // Check for interaction with cannon
-        if (Input.GetKeyDown(KeyCode.E))
-        {
-            Collider2D[] cannonColliders = Physics2D.OverlapCircleAll(transform.position, cannonInteractDistance);
-            foreach (Collider2D collider in cannonColliders)
-            {
-                if (collider.CompareTag("Cannon") && holdingBullet)
+                else if (collider.CompareTag("Engine") && holdingFuel && nearEngine)
                 {
-                    currentInteraction = StartCoroutine(DeliverBulletToCannon(collider));
+                    currentInteraction = StartCoroutine(InsertFuelIntoEngine(collider));
                     break;
                 }
             }
@@ -105,7 +100,7 @@ public class PlayerInteraction : MonoBehaviour
         // Check for interaction with electricity
         if (Input.GetKeyDown(KeyCode.E))
         {
-            Collider2D[] electricityColliders = Physics2D.OverlapCircleAll(transform.position, interactDistance);
+            Collider2D[] electricityColliders = Physics2D.OverlapCircleAll(transform.position, electricityInteractDistance);
             foreach (Collider2D collider in electricityColliders)
             {
                 if (collider.CompareTag("Electricity"))
@@ -140,7 +135,9 @@ public class PlayerInteraction : MonoBehaviour
             yield return null;
         }
         progressBar.gameObject.SetActive(false);
-        collider.gameObject.SetActive(false); // Disable the hole GameObject
+
+        // Deactivate the hole object
+        collider.gameObject.SetActive(false);
     }
 
     IEnumerator TakeOxygenTank(Collider2D collider)
@@ -186,7 +183,7 @@ public class PlayerInteraction : MonoBehaviour
         }
     }
 
-    IEnumerator TakeBullet(Collider2D collider)
+    IEnumerator TakeFuel(Collider2D collider)
     {
         progressBar.gameObject.SetActive(true);
         float elapsedTime = 0f;
@@ -201,11 +198,11 @@ public class PlayerInteraction : MonoBehaviour
             progressBar.value = Mathf.Clamp01(elapsedTime / interactionTime);
             yield return null;
         }
-        holdingBullet = true;
+        holdingFuel = true;
         progressBar.gameObject.SetActive(false);
     }
 
-    IEnumerator DeliverBulletToCannon(Collider2D collider)
+    IEnumerator InsertFuelIntoEngine(Collider2D collider)
     {
         progressBar.gameObject.SetActive(true);
         float elapsedTime = 0f;
@@ -220,10 +217,15 @@ public class PlayerInteraction : MonoBehaviour
             progressBar.value = Mathf.Clamp01(elapsedTime / interactionTime);
             yield return null;
         }
-        holdingBullet = false;
+        holdingFuel = false;
         progressBar.gameObject.SetActive(false);
-        // Perform cannon firing logic here
-        Debug.Log("Bullet fired!"); // Example placeholder logic
+
+        // Perform logic to interact with the engine (example: activate fuel insertion)
+        EngineController engine = collider.GetComponent<EngineController>();
+        if (engine != null)
+        {
+            engine.AddFuel(0.2f); // Implement InsertFuel method in EngineController
+        }
     }
 
     IEnumerator RepairElectricity(Collider2D collider)
@@ -242,7 +244,24 @@ public class PlayerInteraction : MonoBehaviour
             yield return null;
         }
         progressBar.gameObject.SetActive(false);
-        Destroy(collider.gameObject); // Remove or deactivate the electricity GameObject
-        // Optionally, add logic here to resolve the electricity problem
+
+        // Deactivate the electricity object
+        collider.gameObject.SetActive(false);
+    }
+
+    void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.CompareTag("Engine"))
+        {
+            nearEngine = true;
+        }
+    }
+
+    void OnTriggerExit2D(Collider2D collision)
+    {
+        if (collision.CompareTag("Engine"))
+        {
+            nearEngine = false;
+        }
     }
 }

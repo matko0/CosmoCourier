@@ -5,7 +5,7 @@ public class OxygenGenerator : MonoBehaviour
 {
     public Slider oxygenSlider; // Reference to the generator's UI slider
     public float maxOxygen = 1f; // Maximum oxygen capacity
-    public float depletionRate = 0.001f; // Rate at which oxygen depletes per second
+    public float depletionRate; // Rate at which oxygen depletes per second
 
     void Start()
     {
