@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System.Collections;
 
 public class HoleSpawner : MonoBehaviour
@@ -7,9 +8,9 @@ public class HoleSpawner : MonoBehaviour
     public Transform shipArea; // Area where holes can spawn
     public float spawnInterval = 10f; // Time between spawns
     public float minX, maxX, minY, maxY; // Bounds for hole spawning
-    public int maxHoles = 10; // Maximum number of allowed holes
+    public int maxHoles = 10; // Maximum allowed holes
 
-    private int currentHoleCount = 0; // Current number of spawned holes
+    private int currentHoles = 0; // Current number of holes
 
     void Start()
     {
@@ -22,12 +23,10 @@ public class HoleSpawner : MonoBehaviour
         {
             yield return new WaitForSeconds(spawnInterval);
 
-            // Check if maximum holes limit reached
-            if (currentHoleCount >= maxHoles)
+            if (currentHoles == maxHoles)
             {
-                Debug.Log("Game Over - Too many holes!");
-                // Implement game over logic here (e.g., show game over screen, reset game, etc.)
-                yield break; // Exit coroutine
+                SceneManager.LoadScene("gameOver"); // Replace "GameOverScene" with the name of your Game Over scene
+                yield break;
             }
 
             // Calculate a random position within the defined bounds
@@ -35,11 +34,18 @@ public class HoleSpawner : MonoBehaviour
             float randomY = Random.Range(minY, maxY);
             Vector2 spawnPosition = new Vector2(randomX, randomY);
 
-            // Instantiate the hole at the random position
+            // Instantiate the hole at the random position and increment the hole count
             Instantiate(holePrefab, spawnPosition, Quaternion.identity, shipArea);
+            currentHoles++;
+        }
+    }
 
-            // Increment the hole count
-            currentHoleCount++;
+    // Method to decrease the hole count when a hole is repaired
+    public void RepairHole()
+    {
+        if (currentHoles > 0)
+        {
+            currentHoles--;
         }
     }
 }

@@ -1,25 +1,27 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using System.Collections;
 
 public class PlayerInteraction : MonoBehaviour
 {
-    public float interactDistance = 2f; // Default distance to interact with objects
+    public float electricityInteractDistance = 2f; // Distance to interact with electricity
     public float holeInteractDistance = 3f; // Distance to interact with holes
     public float tankInteractDistance = 2f; // Distance to interact with oxygen tanks
     public float generatorInteractDistance = 2f; // Distance to interact with oxygen generators
-    public float bulletBoxInteractDistance = 2f; // Distance to interact with bullet box
-    public float cannonInteractDistance = 2f; // Distance to interact with cannon
     public float fuelTankInteractDistance = 2f; // Distance to interact with fuel tanks or containers
-    public float electricityInteractDistance = 2f; // Distance to interact with electricity objects
+    public float engineInteractDistance = 2f; // Distance to interact with engine
     public Slider progressBar; // Reference to the player's action progress bar
     public float interactionTime = 2f; // Time to hold E for interaction
     public Transform headPosition; // Reference to the player's head position
+    public Text timerText; // Reference to the UI Text for timer
+    public Text highscoreText; // Reference to the UI Text for highscore
     private Coroutine currentInteraction;
     private bool holdingTank; // Flag to indicate if the player is holding an oxygen tank
-    private bool holdingBullet; // Flag to indicate if the player is holding a bullet
     private bool holdingFuel; // Flag to indicate if the player is holding fuel
-    private bool nearEngine; // Flag to indicate if the player is near an engine
+    private bool gameEnded; // Flag to track if game over condition has been triggered
+    private float timer; // Timer to track how long the player has been alive
+    private float highscore; // Highscore to track the longest survival time
 
     void Start()
     {
@@ -27,13 +29,44 @@ public class PlayerInteraction : MonoBehaviour
         {
             progressBar.gameObject.SetActive(false); // Initially hide the progress bar
         }
+
+        if (timerText != null)
+        {
+            timerText.text = "Time Alive: 0s";
+        }
+
+        // Load highscore from PlayerPrefs
+        highscore = PlayerPrefs.GetFloat("Highscore", 0f);
     }
 
     void Update()
     {
+        if (gameEnded)
+        {
+            return; // Exit update loop if game over condition is met
+        }
+
+        // Update timer
+        timer += Time.deltaTime;
+        UpdateTimerUI();
+
         if (headPosition != null && progressBar != null)
         {
             progressBar.transform.position = headPosition.position;
+        }
+
+        // Check for interaction with electricity
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            Collider2D[] electricityColliders = Physics2D.OverlapCircleAll(transform.position, electricityInteractDistance);
+            foreach (Collider2D collider in electricityColliders)
+            {
+                if (collider.CompareTag("Electricity"))
+                {
+                    currentInteraction = StartCoroutine(FixElectricity(collider));
+                    break;
+                }
+            }
         }
 
         // Check for interaction with holes
@@ -89,23 +122,18 @@ public class PlayerInteraction : MonoBehaviour
                     currentInteraction = StartCoroutine(TakeFuel(collider));
                     break;
                 }
-                else if (collider.CompareTag("Engine") && holdingFuel && nearEngine)
-                {
-                    currentInteraction = StartCoroutine(InsertFuelIntoEngine(collider));
-                    break;
-                }
             }
         }
 
-        // Check for interaction with electricity
+        // Check for interaction with engines
         if (Input.GetKeyDown(KeyCode.E))
         {
-            Collider2D[] electricityColliders = Physics2D.OverlapCircleAll(transform.position, electricityInteractDistance);
-            foreach (Collider2D collider in electricityColliders)
+            Collider2D[] engineColliders = Physics2D.OverlapCircleAll(transform.position, engineInteractDistance);
+            foreach (Collider2D collider in engineColliders)
             {
-                if (collider.CompareTag("Electricity"))
+                if (collider.CompareTag("Engine") && holdingFuel)
                 {
-                    currentInteraction = StartCoroutine(RepairElectricity(collider));
+                    currentInteraction = StartCoroutine(DeliverFuelToEngine(collider));
                     break;
                 }
             }
@@ -116,6 +144,30 @@ public class PlayerInteraction : MonoBehaviour
         {
             StopCoroutine(currentInteraction);
             progressBar.gameObject.SetActive(false);
+        }
+    }
+
+    IEnumerator FixElectricity(Collider2D collider)
+    {
+        progressBar.gameObject.SetActive(true);
+        float elapsedTime = 0f;
+        while (elapsedTime < interactionTime)
+        {
+            if (!Input.GetKey(KeyCode.E))
+            {
+                progressBar.gameObject.SetActive(false);
+                yield break; // Exit the coroutine if E key is released
+            }
+            elapsedTime += Time.deltaTime;
+            progressBar.value = Mathf.Clamp01(elapsedTime / interactionTime);
+            yield return null;
+        }
+
+        // After interaction time, disable the electricity GameObject if collider still exists
+        progressBar.gameObject.SetActive(false);
+        if (collider != null && collider.gameObject != null)
+        {
+            collider.gameObject.SetActive(false);
         }
     }
 
@@ -135,9 +187,7 @@ public class PlayerInteraction : MonoBehaviour
             yield return null;
         }
         progressBar.gameObject.SetActive(false);
-
-        // Deactivate the hole object
-        collider.gameObject.SetActive(false);
+        collider.gameObject.SetActive(false); // Disable the hole GameObject
     }
 
     IEnumerator TakeOxygenTank(Collider2D collider)
@@ -202,7 +252,7 @@ public class PlayerInteraction : MonoBehaviour
         progressBar.gameObject.SetActive(false);
     }
 
-    IEnumerator InsertFuelIntoEngine(Collider2D collider)
+    IEnumerator DeliverFuelToEngine(Collider2D collider)
     {
         progressBar.gameObject.SetActive(true);
         float elapsedTime = 0f;
@@ -219,49 +269,18 @@ public class PlayerInteraction : MonoBehaviour
         }
         holdingFuel = false;
         progressBar.gameObject.SetActive(false);
-
-        // Perform logic to interact with the engine (example: activate fuel insertion)
         EngineController engine = collider.GetComponent<EngineController>();
         if (engine != null)
         {
-            engine.AddFuel(0.2f); // Implement InsertFuel method in EngineController
+            engine.AddFuel(0.4f); // Adjust this value as needed
         }
     }
 
-    IEnumerator RepairElectricity(Collider2D collider)
+    void UpdateTimerUI()
     {
-        progressBar.gameObject.SetActive(true);
-        float elapsedTime = 0f;
-        while (elapsedTime < interactionTime)
+        if (timerText != null)
         {
-            if (!Input.GetKey(KeyCode.E))
-            {
-                progressBar.gameObject.SetActive(false);
-                yield break;
-            }
-            elapsedTime += Time.deltaTime;
-            progressBar.value = Mathf.Clamp01(elapsedTime / interactionTime);
-            yield return null;
-        }
-        progressBar.gameObject.SetActive(false);
-
-        // Deactivate the electricity object
-        collider.gameObject.SetActive(false);
-    }
-
-    void OnTriggerEnter2D(Collider2D collision)
-    {
-        if (collision.CompareTag("Engine"))
-        {
-            nearEngine = true;
-        }
-    }
-
-    void OnTriggerExit2D(Collider2D collision)
-    {
-        if (collision.CompareTag("Engine"))
-        {
-            nearEngine = false;
+            timerText.text = "Time Alive: " + Mathf.FloorToInt(timer).ToString() + "s";
         }
     }
 }

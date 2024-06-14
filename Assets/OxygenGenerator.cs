@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class OxygenGenerator : MonoBehaviour
 {
@@ -19,6 +20,7 @@ public class OxygenGenerator : MonoBehaviour
     void Update()
     {
         DepleteOxygen();
+        CheckGameOver();
     }
 
     public void AddOxygen(float amount)
@@ -34,6 +36,14 @@ public class OxygenGenerator : MonoBehaviour
         if (oxygenSlider != null)
         {
             oxygenSlider.value = Mathf.Clamp(oxygenSlider.value - depletionRate * Time.deltaTime, 0f, maxOxygen);
+        }
+    }
+
+    private void CheckGameOver()
+    {
+        if (oxygenSlider != null && oxygenSlider.value <= 0f)
+        {
+            SceneManager.LoadScene("gameOver");
         }
     }
 }

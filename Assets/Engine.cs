@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class EngineController : MonoBehaviour
+public class Engine : MonoBehaviour
 {
     public void InsertFuel()
     {
